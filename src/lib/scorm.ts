@@ -7,22 +7,38 @@ let scormAPI: any = null;
 let scormVersion: '1.2' | '2004' | null = null;
 let isInitialized = false;
 
+// Safely read a property from a (possibly cross-origin) window.
+// Accessing properties on a cross-origin frame throws a SecurityError,
+// so we swallow it and treat the value as unavailable.
+function safeGet<T>(fn: () => T): T | null {
+  try {
+    return fn();
+  } catch {
+    return null;
+  }
+}
+
 // Search for the SCORM API in the window hierarchy
 function findAPI(win: any): any {
   let attempts = 0;
   while (win != null && attempts < 10) {
-    if (win.API) {
+    const api12 = safeGet(() => win.API);
+    if (api12) {
       scormVersion = '1.2';
-      return win.API;
+      return api12;
     }
-    if (win.API_1484_11) {
+    const api2004 = safeGet(() => win.API_1484_11);
+    if (api2004) {
       scormVersion = '2004';
-      return win.API_1484_11;
+      return api2004;
     }
-    if (win.parent && win.parent !== win) {
-      win = win.parent;
-    } else if (win.opener) {
-      win = win.opener;
+
+    const parent = safeGet(() => (win.parent && win.parent !== win ? win.parent : null));
+    const opener = safeGet(() => win.opener);
+    if (parent) {
+      win = parent;
+    } else if (opener) {
+      win = opener;
     } else {
       break;
     }
@@ -36,14 +52,20 @@ export function getSCORMAPI(): any {
   if (scormAPI) return scormAPI;
 
   scormAPI = findAPI(window);
-  if (!scormAPI && window.parent && window.parent !== window) {
-    scormAPI = findAPI(window.parent);
+
+  const parent = safeGet(() => (window.parent && window.parent !== window ? window.parent : null));
+  if (!scormAPI && parent) {
+    scormAPI = findAPI(parent);
   }
-  if (!scormAPI && window.top && window.top !== window) {
-    scormAPI = findAPI(window.top);
+
+  const top = safeGet(() => (window.top && window.top !== window ? window.top : null));
+  if (!scormAPI && top) {
+    scormAPI = findAPI(top);
   }
-  if (!scormAPI && window.opener) {
-    scormAPI = findAPI(window.opener);
+
+  const opener = safeGet(() => window.opener);
+  if (!scormAPI && opener) {
+    scormAPI = findAPI(opener);
   }
 
   return scormAPI;
