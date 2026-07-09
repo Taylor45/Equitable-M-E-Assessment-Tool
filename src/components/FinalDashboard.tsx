@@ -1,9 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'motion/react';
 import {
-  Award, Sparkles, Printer, RotateCcw, ChevronRight, ChevronDown, CheckSquare,
-  Square, FileText, ClipboardList, AlertCircle, Compass, Users, BarChart3,
-  TrendingUp, ArrowUpRight, HelpCircle, Save, CheckCircle
+  Award, Printer, RotateCcw, ChevronRight, ChevronDown,
+  ClipboardList, AlertCircle, Compass, Users, BarChart3,
+  TrendingUp, ArrowUpRight, HelpCircle, Save
 } from 'lucide-react';
 import {
   Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
@@ -18,22 +18,9 @@ interface FinalDashboardProps {
 }
 
 export default function FinalDashboard({ answers, onReset }: FinalDashboardProps) {
-  const [activeTab, setActiveTab] = useState<'profile' | 'breakdown' | 'planner'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'breakdown'>('profile');
   const [expandedDimension, setExpandedDimension] = useState<number | null>(1);
   const [chartType, setChartType] = useState<'radar' | 'bar'>('radar');
-
-  // Custom User Action Notes
-  const [actionNotes, setActionNotes] = useState<Record<number, string>>(() => {
-    const saved = localStorage.getItem('me_assessment_action_notes');
-    return saved ? JSON.parse(saved) : {};
-  });
-
-  const [completedActions, setCompletedActions] = useState<Record<number, boolean>>(() => {
-    const saved = localStorage.getItem('me_assessment_completed_actions');
-    return saved ? JSON.parse(saved) : {};
-  });
-
-  const [saveSuccess, setSaveSuccess] = useState(false);
 
   // Calculate Dimension Counts
   const dimensionCounts = useMemo(() => {
@@ -143,89 +130,6 @@ export default function FinalDashboard({ answers, onReset }: FinalDashboardProps
     });
   }, [dimensionCounts]);
 
-  // Actions / Recommendations Creator
-  const actionableRecommendations = useMemo(() => {
-    const list: Array<{
-      questionId: number;
-      text: string;
-      dimensionName: string;
-      levelSelected: EquityLevel;
-      action: string;
-    }> = [];
-
-    Object.entries(answers).forEach(([qIdStr, level]) => {
-      const qId = parseInt(qIdStr);
-      if (level === 'L3') return; // L3 doesn't need basic recommendations
-
-      const q = questions.find(q => q.id === qId);
-      if (!q) return;
-
-      const dim = dimensions.find(d => d.id === q.dimensionId);
-      if (!dim) return;
-
-      let actionText = "";
-
-      // Generate customized action items based on question text and answers
-      if (q.id === 1 || q.id === 2 || q.id === 3) {
-        actionText = "Revise your organization's core M&E theory of change to explicitly ground it in decolonial or culturally responsive evaluation paradigms (e.g., Afrocentric evaluation).";
-      } else if (q.id === 4 || q.id === 5 || q.id === 7) {
-        actionText = "Reframe your conceptual framework to address structural inequalities rather than simple equal representation. Establish benchmarks directly measuring shifts in community decision-making control.";
-      } else if (q.id === 6) {
-        actionText = "Establish a systematic protocol to consistently disaggregate all collected quantitative data across multiple intersectional layers, including disability, gender, age, geography, and socio-economic status.";
-      } else if (q.id === 8 || q.id === 9) {
-        actionText = "Rephrase core evaluation questions to focus on critical inquiry and power analysis (e.g., 'Whose needs are served, whose are ignored, and why?'). Move beyond purely Counting inputs and outputs.";
-      } else if (q.id === 10 || q.id === 11) {
-        actionText = "Transition community engagement from mere 'consultation' or 'data sources' into active co-creators. Create a participatory panel that co-designs indicators, methods, and schedules.";
-      } else if (q.id === 12) {
-        actionText = "Adopt a formal policy to consistently compensate community members for their labor, knowledge, and time spent participating in focus groups or as co-evaluators, aligning with professional or equitable standards.";
-      } else if (q.id === 13 || q.id === 14) {
-        actionText = "Pilot localized, narrative-based methodologies (such as community storytelling or talanoa) that are culturally appropriate, reducing reliance on dense standardized surveys.";
-      } else if (q.id === 15) {
-        actionText = "Ring-fence a dedicated portion of the evaluation budget to be owned and spent under direct community guidance, empowering them to pursue local learning priorities.";
-      } else if (q.id === 16 || q.id === 17 || q.id === 18 || q.id === 19) {
-        actionText = "Incorporate mandatory participatory data validation workshops, where community members interpret raw findings and co-author the main analytical conclusions before finalizing the report.";
-      } else if (q.id === 20 || q.id === 21) {
-        actionText = "Establish formal, pre-M&E data sharing agreements (e.g., following OCAP principles) granting communities full accessibility to their raw data, with veto power over external publishing.";
-      } else if (q.id === 22 || q.id === 23) {
-        actionText = "Invest in multilingual, multi-format dissemination campaigns (using local radio, infographics, oral storytelling sessions) to ensure M&E findings are accessible to all literacy levels.";
-      } else if (q.id === 24 || q.id === 25 || q.id === 26) {
-        actionText = "Demonstrate institutional courage by publicizing uncomfortable or negative M&E findings. Run collaborative 'post-mortems' to adjust programmatic budgets and strategies accordingly.";
-      } else if (q.id === 27 || q.id === 28 || q.id === 29) {
-        actionText = "Actively partner with policy advocates or sector networks to translate evaluation data into policy briefings, lobbying for structural and funding reforms.";
-      } else if (q.id === 30) {
-        actionText = "Create recurring internal reflection circles and cross-department spaces to integrate M&E findings directly into ongoing operational and design decisions.";
-      }
-
-      if (actionText) {
-        list.push({
-          questionId: q.id,
-          text: q.text,
-          dimensionName: dim.name,
-          levelSelected: level,
-          action: actionText
-        });
-      }
-    });
-
-    return list;
-  }, [answers]);
-
-  // Save actions handler
-  const saveActionPlan = () => {
-    localStorage.setItem('me_assessment_action_notes', JSON.stringify(actionNotes));
-    localStorage.setItem('me_assessment_completed_actions', JSON.stringify(completedActions));
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 3000);
-  };
-
-  const handleNoteChange = (qId: number, text: string) => {
-    setActionNotes(prev => ({ ...prev, [qId]: text }));
-  };
-
-  const toggleActionCompleted = (qId: number) => {
-    setCompletedActions(prev => ({ ...prev, [qId]: !prev[qId] }));
-  };
-
   const handlePrint = () => {
     window.print();
   };
@@ -309,20 +213,6 @@ export default function FinalDashboard({ answers, onReset }: FinalDashboardProps
           <div className="flex items-center gap-2">
             <ClipboardList size={15} />
             <span>Dimension Deep-Dive</span>
-          </div>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('planner')}
-          className={`px-4 py-3 font-serif font-bold text-sm border-b-2 transition-all cursor-pointer ${
-            activeTab === 'planner'
-              ? 'border-natural-olive text-natural-olive'
-              : 'border-transparent text-natural-accent hover:text-natural-olive'
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            <FileText size={15} />
-            <span>Action Planner ({actionableRecommendations.length})</span>
           </div>
         </button>
       </div>
@@ -621,123 +511,6 @@ export default function FinalDashboard({ answers, onReset }: FinalDashboardProps
               </div>
             );
           })}
-        </div>
-      </div>
-
-      {/* --- TAB CONTENT: INTERACTIVE ACTION PLANNER --- */}
-      <div className={`${activeTab === 'planner' ? 'block' : 'hidden'} print:block space-y-6 print:space-y-4 print:mt-8 print:break-before-page`}>
-        {/* Printable Section Title */}
-        <div className="hidden print:block mb-4 border-b border-natural-sand pb-2">
-          <h2 className="font-serif text-xl font-bold text-natural-olive">
-            Equitable M&E Action Planner
-          </h2>
-          <p className="text-xs text-natural-ink/75 font-mono">
-            Our custom implementation roadmap, targets, and strategic action plans.
-          </p>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-natural-sand shadow-sm p-6 sm:p-8 space-y-6 print:shadow-none print:p-0 print:border-none">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h3 className="font-serif font-bold text-natural-olive text-lg sm:text-xl">
-                Interactive Equity Action Planner
-              </h3>
-              <p className="text-xs sm:text-sm text-natural-accent font-semibold">
-                Tailored development actions based on questions where your framework has room to deepen equity.
-              </p>
-            </div>
-
-            {/* Save Plan Button */}
-            <button
-              onClick={saveActionPlan}
-              className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-natural-olive hover:bg-natural-olive/90 text-white font-serif font-bold text-sm rounded-full shadow-xs transition-all self-stretch sm:self-auto cursor-pointer no-print"
-            >
-              {saveSuccess ? <CheckCircle size={15} /> : <Save size={15} />}
-              <span>{saveSuccess ? 'Plan Saved!' : 'Save Action Plan'}</span>
-            </button>
-          </div>
-
-          {/* Empty State */}
-          {actionableRecommendations.length === 0 ? (
-            <div className="text-center py-12 bg-natural-sand/10 rounded-2xl border border-dashed border-natural-sand">
-              <Sparkles className="w-10 h-10 text-natural-olive mx-auto mb-3 animate-bounce" />
-              <h4 className="font-serif font-bold text-natural-ink text-base">Perfect Score Achieved!</h4>
-              <p className="text-xs text-natural-ink/70 max-w-sm mx-auto leading-relaxed mt-1">
-                You have answered 'Highly Transformative (L3)' across all 30 assessment questions. Your practices are fully equity-centered!
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {actionableRecommendations.map((rec, index) => {
-                const isCompleted = !!completedActions[rec.questionId];
-                const userNote = actionNotes[rec.questionId] || "";
-
-                return (
-                  <div
-                    key={rec.questionId}
-                    className={`p-5 rounded-2xl border transition-all duration-300 flex flex-col md:flex-row gap-4 items-start print-break-inside-avoid ${
-                      isCompleted
-                        ? 'bg-natural-sand/10 border-natural-sand/60 opacity-70'
-                        : 'bg-white border-natural-sand shadow-xs hover:shadow-sm'
-                    }`}
-                  >
-                    {/* Checkbox */}
-                    <button
-                      onClick={() => toggleActionCompleted(rec.questionId)}
-                      className="p-1 rounded text-natural-olive hover:text-natural-olive/80 transition-colors flex-shrink-0 cursor-pointer"
-                      title={isCompleted ? "Mark in progress" : "Mark completed"}
-                    >
-                      {isCompleted ? <CheckSquare size={20} /> : <Square size={20} className="text-natural-accent" />}
-                    </button>
-
-                    {/* Content details */}
-                    <div className="flex-1 space-y-3">
-                      <div className="space-y-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-[10px] font-mono font-bold bg-natural-sand/40 text-natural-olive px-2 py-0.5 rounded-md">
-                            {rec.dimensionName}
-                          </span>
-                          <span className="text-[9px] font-mono font-bold bg-natural-sand/30 text-natural-ink px-1.5 py-0.5 rounded border border-natural-sand">
-                            Selected: {rec.levelSelected}
-                          </span>
-                        </div>
-                        <h4 className={`font-serif font-bold text-natural-ink text-sm sm:text-base leading-snug ${
-                          isCompleted ? 'line-through text-natural-accent' : ''
-                        }`}>
-                          Recommendation: {rec.action}
-                        </h4>
-                        <p className="text-xs text-natural-accent leading-relaxed font-light font-mono italic">
-                          Triggered by: "{rec.text}"
-                        </p>
-                      </div>
-
-                      {/* Interactive Implementation Note Box */}
-                      <div className="space-y-1.5 pt-2">
-                        <label className="text-[10px] font-bold text-natural-accent uppercase tracking-wider block">
-                          Our Implementation Notes & Milestones:
-                        </label>
-                        <textarea
-                          value={userNote}
-                          onChange={(e) => handleNoteChange(rec.questionId, e.target.value)}
-                          placeholder="Type target dates, assigned coordinators, or customized steps here..."
-                          className="w-full text-xs p-3 rounded-xl border border-natural-sand bg-natural-sand/10 focus:bg-white focus:ring-1 focus:ring-natural-olive/30 focus:border-natural-olive focus:outline-none transition-all placeholder-natural-accent h-16 resize-none print:hidden"
-                        />
-                        {userNote ? (
-                          <p className="hidden print:block text-xs text-natural-ink bg-natural-sand/10 border border-natural-sand/50 p-3 rounded-xl whitespace-pre-wrap">
-                            {userNote}
-                          </p>
-                        ) : (
-                          <p className="hidden print:block text-xs text-natural-accent italic">
-                            No notes added yet.
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
         </div>
       </div>
     </div>
