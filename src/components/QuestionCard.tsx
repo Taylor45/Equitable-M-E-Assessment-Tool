@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, ArrowRight, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Eye, EyeOff, MessageSquareText } from 'lucide-react';
 import { Question, EquityLevel } from '../types';
 
 interface QuestionCardProps {
@@ -32,6 +32,28 @@ export default function QuestionCard({
   const [showLevels, setShowLevels] = React.useState(false);
 
   const alphabet = ['A', 'B', 'C'];
+
+  // Human-readable label + accent styling for each equity level
+  const levelMeta: Record<EquityLevel, { label: string; badge: string; panel: string }> = {
+    L1: {
+      label: 'Conventional / Needs Improvement',
+      badge: 'bg-amber-100 text-amber-900 border border-amber-200',
+      panel: 'bg-amber-50/70 border-amber-200'
+    },
+    L2: {
+      label: 'Developing Equity',
+      badge: 'bg-amber-100 text-amber-900 border border-amber-200',
+      panel: 'bg-amber-50/70 border-amber-200'
+    },
+    L3: {
+      label: 'Highly Equitable / Transformative',
+      badge: 'bg-amber-100 text-amber-900 border border-amber-200',
+      panel: 'bg-amber-50/70 border-amber-200'
+    }
+  };
+
+  // Find the currently selected option to surface its feedback direction
+  const selectedOption = question.options.find((opt) => opt.level === selectedLevel);
 
   return (
     <div className="bg-white rounded-2xl border border-natural-sand shadow-sm p-6 sm:p-8 relative overflow-hidden">
@@ -145,6 +167,37 @@ export default function QuestionCard({
               );
             })}
           </div>
+
+          {/* Feedback Direction — shown once an option is selected */}
+          <AnimatePresence mode="wait">
+            {selectedOption && selectedOption.feedback && (
+              <motion.div
+                key={`${question.id}-${selectedOption.level}`}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.25 }}
+                className={`rounded-xl border p-4 sm:p-5 flex items-start gap-3 ${levelMeta[selectedOption.level].panel}`}
+                role="status"
+                aria-live="polite"
+              >
+                <MessageSquareText size={18} className="text-natural-olive flex-shrink-0 mt-0.5" />
+                <div className="space-y-1.5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[11px] font-serif font-bold uppercase tracking-wide text-natural-olive">
+                      Feedback
+                    </span>
+                    <span className={`text-[9px] font-mono font-bold uppercase px-1.5 py-0.5 rounded ${levelMeta[selectedOption.level].badge}`}>
+                      {selectedOption.level} • {levelMeta[selectedOption.level].label}
+                    </span>
+                  </div>
+                  <p className="text-xs sm:text-sm text-natural-ink/85 leading-relaxed font-light">
+                    {selectedOption.feedback}
+                  </p>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </motion.div>
       </AnimatePresence>
 
