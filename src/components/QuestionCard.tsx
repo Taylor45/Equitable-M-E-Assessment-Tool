@@ -42,13 +42,13 @@ export default function QuestionCard({
     },
     L2: {
       label: 'Developing Equity',
-      badge: 'bg-natural-accent/20 text-natural-olive border border-natural-sand/60',
-      panel: 'bg-natural-accent/10 border-natural-sand/70'
+      badge: 'bg-amber-100 text-amber-900 border border-amber-200',
+      panel: 'bg-amber-50/70 border-amber-200'
     },
     L3: {
       label: 'Highly Equitable / Transformative',
-      badge: 'bg-natural-sand/60 text-natural-olive border border-natural-sand',
-      panel: 'bg-natural-sand/25 border-natural-sand'
+      badge: 'bg-amber-100 text-amber-900 border border-amber-200',
+      panel: 'bg-amber-50/70 border-amber-200'
     }
   };
 
