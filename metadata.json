@@ -1,0 +1,6 @@
+{
+  "name": "Equitable M&E Reflection Tool",
+  "description": "An interactive self-assessment and reflection tool designed to help organizations evaluate, track, and deepen equity in their Monitoring and Evaluation (M&E) practices.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
