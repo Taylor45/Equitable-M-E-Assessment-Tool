@@ -1,7 +1,74 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, ArrowRight, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Compass } from 'lucide-react';
 import { Question, EquityLevel } from '../types';
+
+function formatFeedback(feedback: string | undefined): React.ReactNode {
+  if (!feedback) return null;
+
+  const prefixes = [
+    "Conventional/needs improvement",
+    "Developing Equity",
+    "Highly Equitable/Transformative",
+    "Highly Equitable / Transformative"
+  ];
+
+  let matchedPrefix = "";
+  let remainingText = feedback;
+
+  for (const prefix of prefixes) {
+    if (feedback.toLowerCase().startsWith(prefix.toLowerCase())) {
+      matchedPrefix = prefix;
+      let temp = feedback.substring(prefix.length);
+      // Strip leading colon, spaces, newlines
+      temp = temp.replace(/^[\s:]+/, '');
+      remainingText = temp;
+      break;
+    }
+  }
+
+  if (matchedPrefix) {
+    let displayPrefix = matchedPrefix;
+    if (matchedPrefix.toLowerCase().includes("highly")) {
+      displayPrefix = "Highly Equitable/Transformative";
+    } else if (matchedPrefix.toLowerCase().includes("developing")) {
+      displayPrefix = "Developing Equity";
+    } else if (matchedPrefix.toLowerCase().includes("conventional")) {
+      displayPrefix = "Conventional/needs improvement";
+    }
+
+    return (
+      <span className="whitespace-pre-line">
+        <strong className="font-semibold">{displayPrefix}:</strong> {remainingText}
+      </span>
+    );
+  }
+
+  // Fallback: split by first newline or colon
+  const firstNewlineIdx = feedback.indexOf('\n');
+  const firstColonIdx = feedback.indexOf(':');
+
+  let splitIdx = -1;
+  if (firstNewlineIdx !== -1 && firstColonIdx !== -1) {
+    splitIdx = Math.min(firstNewlineIdx, firstColonIdx);
+  } else {
+    splitIdx = firstNewlineIdx !== -1 ? firstNewlineIdx : firstColonIdx;
+  }
+
+  if (splitIdx !== -1) {
+    const title = feedback.substring(0, splitIdx).trim();
+    const rest = feedback.substring(splitIdx + 1).replace(/^[\s:]+/, '').trim();
+    if (title && rest) {
+      return (
+        <span className="whitespace-pre-line">
+          <strong className="font-semibold">{title}:</strong> {rest}
+        </span>
+      );
+    }
+  }
+
+  return <span className="whitespace-pre-line">{feedback}</span>;
+}
 
 interface QuestionCardProps {
   question: Question;
@@ -28,9 +95,6 @@ export default function QuestionCard({
   dimensionName,
   dimensionSubtitle
 }: QuestionCardProps) {
-  // We can add a simple toggle state to show L1/L2/L3 values for training/testing purposes
-  const [showLevels, setShowLevels] = React.useState(false);
-
   const alphabet = ['A', 'B', 'C'];
 
   return (
@@ -50,14 +114,6 @@ export default function QuestionCard({
         </div>
 
         <div className="flex items-center gap-3 self-start sm:self-center">
-          <button
-            onClick={() => setShowLevels(!showLevels)}
-            className="flex items-center gap-1 text-[11px] font-medium text-natural-olive hover:bg-natural-sand/30 transition-colors bg-natural-sand/20 border border-natural-sand rounded px-2 py-1 cursor-pointer"
-            title="Toggle viewing of L1/L2/L3 levels"
-          >
-            {showLevels ? <EyeOff size={12} /> : <Eye size={12} />}
-            <span>{showLevels ? 'Hide Levels' : 'Study Mode (Show Levels)'}</span>
-          </button>
           <div className="text-xs font-mono text-natural-olive font-bold bg-natural-sand/30 border border-natural-sand rounded px-2.5 py-1">
             Question {currentNumber} of {totalQuestions}
           </div>
@@ -92,16 +148,8 @@ export default function QuestionCard({
               const isSelected = selectedLevel === opt.level;
               const letter = alphabet[idx];
 
-              // Set distinct styles based on level if study mode is enabled
-              let studyBadgeColor = "bg-natural-sand/40 text-natural-ink/70 border border-natural-sand";
               let selectionBorder = "border-natural-sand";
               let selectionBg = "bg-white hover:bg-natural-sand/5 hover:border-natural-olive";
-
-              if (showLevels) {
-                if (opt.level === 'L3') studyBadgeColor = "bg-natural-sand/50 text-natural-olive border border-natural-sand";
-                if (opt.level === 'L2') studyBadgeColor = "bg-natural-accent/20 text-natural-olive border border-natural-sand/60";
-                if (opt.level === 'L1') studyBadgeColor = "bg-amber-100/60 text-amber-900 border border-amber-200";
-              }
 
               if (isSelected) {
                 selectionBorder = "border-natural-olive ring-2 ring-natural-olive/10 shadow-xs";
@@ -129,11 +177,6 @@ export default function QuestionCard({
                       <span className="font-sans font-medium text-natural-ink text-sm sm:text-base">
                         {opt.text}
                       </span>
-                      {showLevels && (
-                        <span className={`text-[9px] font-mono font-bold uppercase px-1.5 py-0.5 rounded ${studyBadgeColor}`}>
-                          {opt.level}
-                        </span>
-                      )}
                     </div>
                     {opt.description && (
                       <p className="text-xs sm:text-sm text-natural-ink/75 leading-relaxed font-light">
@@ -145,6 +188,32 @@ export default function QuestionCard({
               );
             })}
           </div>
+
+          {/* Selected Option Feedback Direction Panel */}
+          <AnimatePresence mode="wait">
+            {selectedLevel && (
+              <motion.div
+                key={`${question.id}-${selectedLevel}`}
+                initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                animate={{ opacity: 1, height: 'auto', marginTop: 24 }}
+                exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                transition={{ duration: 0.25 }}
+                className="overflow-hidden"
+              >
+                <div className="p-5 rounded-xl border border-amber-200 bg-amber-50/50 text-amber-950 shadow-xs shadow-amber-50 transition-all duration-300">
+                  <div className="flex items-center gap-2.5 mb-2">
+                    <Compass size={16} className="text-amber-700" />
+                    <span className="font-serif font-bold text-sm sm:text-base tracking-wide">
+                      Feedback
+                    </span>
+                  </div>
+                  <p className="text-xs sm:text-sm leading-relaxed opacity-90 font-sans font-light">
+                    {formatFeedback(question.options.find(o => o.level === selectedLevel)?.feedback)}
+                  </p>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </motion.div>
       </AnimatePresence>
 

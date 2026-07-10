@@ -23,14 +23,35 @@ body {
 
 /* Custom print styles to print report nicely */
 @media print {
-  body {
-    background-color: white;
-    color: black;
+  @page {
+    size: auto;
+    margin: 20mm 15mm 20mm 15mm;
   }
+  
+  body {
+    background-color: white !important;
+    color: #2C2C24 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  
   .no-print {
     display: none !important;
   }
+  
   .print-break-inside-avoid {
-    break-inside: avoid;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+  
+  /* Standard page layout optimization for print */
+  .print-break-before {
+    break-before: page !important;
+    page-break-before: always !important;
+  }
+  
+  /* Ensure charts and blocks scale correctly */
+  svg, canvas {
+    max-width: 100% !important;
   }
 }

@@ -1,9 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion } from 'motion/react';
 import {
-  Award, Sparkles, Printer, RotateCcw, ChevronRight, ChevronDown, CheckSquare,
-  Square, FileText, ClipboardList, AlertCircle, Compass, Users, BarChart3,
-  TrendingUp, ArrowUpRight, HelpCircle, Save, CheckCircle
+  Award, Sparkles, Printer, RotateCcw, ChevronRight, ChevronDown,
+  ClipboardList, AlertCircle, Compass, Users, BarChart3,
+  TrendingUp, ArrowUpRight, HelpCircle
 } from 'lucide-react';
 import {
   Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
@@ -17,23 +17,95 @@ interface FinalDashboardProps {
   onReset: () => void;
 }
 
+const CustomTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div className="bg-white/95 backdrop-blur-md p-3.5 rounded-xl border border-natural-sand shadow-lg font-sans max-w-[240px] text-left">
+        <p className="font-serif font-bold text-natural-olive text-xs sm:text-sm mb-1.5 border-b border-natural-sand/60 pb-1">
+          {data.subject}
+        </p>
+        <div className="space-y-1 text-[11px] text-natural-ink">
+          <div className="flex items-center justify-between font-medium">
+            <span>Avg Maturity:</span>
+            <span className="font-mono text-natural-olive font-bold">{Number(data.Maturity).toFixed(1)} / 3.0</span>
+          </div>
+          <div className="flex items-center justify-between pt-1 font-light text-natural-accent">
+            <span>Conventional (L1):</span>
+            <span className="font-mono font-semibold">{data.L1_Count} items</span>
+          </div>
+          <div className="flex items-center justify-between font-light text-natural-accent">
+            <span>Developing (L2):</span>
+            <span className="font-mono font-semibold">{data.L2_Count} items</span>
+          </div>
+          <div className="flex items-center justify-between font-light text-natural-accent">
+            <span>Transformative (L3):</span>
+            <span className="font-mono font-semibold">{data.L3_Count} items</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
+
+const CustomRadiusTick = ({ x, y, payload, isMobile, cx, cy, radius, angle }: any) => {
+  if (!payload || payload.value === undefined) return null;
+  const valStr = Number(payload.value).toFixed(1);
+  const boxWidth = isMobile ? 24 : 28;
+  const boxHeight = isMobile ? 14 : 16;
+
+  let tickX = x;
+  let tickY = y;
+  if (cx !== undefined && cy !== undefined && radius !== undefined && angle !== undefined) {
+    const angleRad = -angle * Math.PI / 180;
+    tickX = cx + radius * Math.cos(angleRad);
+    tickY = cy + radius * Math.sin(angleRad);
+  }
+
+  return (
+    <g transform={`translate(${tickX}, ${tickY})`}>
+      <rect
+        x={-boxWidth / 2}
+        y={-boxHeight / 2}
+        width={boxWidth}
+        height={boxHeight}
+        rx={4}
+        fill="#FFFFFF"
+        stroke="#D9D9C2"
+        strokeWidth={1}
+        className="shadow-xs"
+      />
+      <text
+        x={0}
+        y={isMobile ? 3 : 3.5}
+        textAnchor="middle"
+        fill="#5A5A40"
+        fontSize={isMobile ? 8 : 9}
+        fontWeight="600"
+        className="font-mono"
+      >
+        {valStr}
+      </text>
+    </g>
+  );
+};
+
 export default function FinalDashboard({ answers, onReset }: FinalDashboardProps) {
-  const [activeTab, setActiveTab] = useState<'profile' | 'breakdown' | 'planner'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'breakdown'>('profile');
   const [expandedDimension, setExpandedDimension] = useState<number | null>(1);
   const [chartType, setChartType] = useState<'radar' | 'bar'>('radar');
+  const [isMobile, setIsMobile] = useState<boolean>(false);
 
-  // Custom User Action Notes
-  const [actionNotes, setActionNotes] = useState<Record<number, string>>(() => {
-    const saved = localStorage.getItem('me_assessment_action_notes');
-    return saved ? JSON.parse(saved) : {};
-  });
-
-  const [completedActions, setCompletedActions] = useState<Record<number, boolean>>(() => {
-    const saved = localStorage.getItem('me_assessment_completed_actions');
-    return saved ? JSON.parse(saved) : {};
-  });
-
-  const [saveSuccess, setSaveSuccess] = useState(false);
+  // Monitor screen size for robust chart responsiveness
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Calculate Dimension Counts
   const dimensionCounts = useMemo(() => {
@@ -132,8 +204,15 @@ export default function FinalDashboard({ answers, onReset }: FinalDashboardProps
   const chartData = useMemo(() => {
     return dimensions.map(d => {
       const count = dimensionCounts[d.id];
+      // On mobile, use shorter names for clean layout display
+      let subjectName = d.name;
+      if (isMobile) {
+        if (d.name.includes(" & ")) {
+          subjectName = d.name.split(" & ")[0]; // e.g. "Theory", "Concepts", "Methods", etc.
+        }
+      }
       return {
-        subject: d.name,
+        subject: subjectName,
         Maturity: count.avgScore,
         L1_Count: count.L1,
         L2_Count: count.L2,
@@ -141,97 +220,14 @@ export default function FinalDashboard({ answers, onReset }: FinalDashboardProps
         fullMark: 3.0
       };
     });
-  }, [dimensionCounts]);
-
-  // Actions / Recommendations Creator
-  const actionableRecommendations = useMemo(() => {
-    const list: Array<{
-      questionId: number;
-      text: string;
-      dimensionName: string;
-      levelSelected: EquityLevel;
-      action: string;
-    }> = [];
-
-    Object.entries(answers).forEach(([qIdStr, level]) => {
-      const qId = parseInt(qIdStr);
-      if (level === 'L3') return; // L3 doesn't need basic recommendations
-
-      const q = questions.find(q => q.id === qId);
-      if (!q) return;
-
-      const dim = dimensions.find(d => d.id === q.dimensionId);
-      if (!dim) return;
-
-      let actionText = "";
-
-      // Generate customized action items based on question text and answers
-      if (q.id === 1 || q.id === 2 || q.id === 3) {
-        actionText = "Revise your organization's core M&E theory of change to explicitly ground it in decolonial or culturally responsive evaluation paradigms (e.g., Afrocentric evaluation).";
-      } else if (q.id === 4 || q.id === 5 || q.id === 7) {
-        actionText = "Reframe your conceptual framework to address structural inequalities rather than simple equal representation. Establish benchmarks directly measuring shifts in community decision-making control.";
-      } else if (q.id === 6) {
-        actionText = "Establish a systematic protocol to consistently disaggregate all collected quantitative data across multiple intersectional layers, including disability, gender, age, geography, and socio-economic status.";
-      } else if (q.id === 8 || q.id === 9) {
-        actionText = "Rephrase core evaluation questions to focus on critical inquiry and power analysis (e.g., 'Whose needs are served, whose are ignored, and why?'). Move beyond purely Counting inputs and outputs.";
-      } else if (q.id === 10 || q.id === 11) {
-        actionText = "Transition community engagement from mere 'consultation' or 'data sources' into active co-creators. Create a participatory panel that co-designs indicators, methods, and schedules.";
-      } else if (q.id === 12) {
-        actionText = "Adopt a formal policy to consistently compensate community members for their labor, knowledge, and time spent participating in focus groups or as co-evaluators, aligning with professional or equitable standards.";
-      } else if (q.id === 13 || q.id === 14) {
-        actionText = "Pilot localized, narrative-based methodologies (such as community storytelling or talanoa) that are culturally appropriate, reducing reliance on dense standardized surveys.";
-      } else if (q.id === 15) {
-        actionText = "Ring-fence a dedicated portion of the evaluation budget to be owned and spent under direct community guidance, empowering them to pursue local learning priorities.";
-      } else if (q.id === 16 || q.id === 17 || q.id === 18 || q.id === 19) {
-        actionText = "Incorporate mandatory participatory data validation workshops, where community members interpret raw findings and co-author the main analytical conclusions before finalizing the report.";
-      } else if (q.id === 20 || q.id === 21) {
-        actionText = "Establish formal, pre-M&E data sharing agreements (e.g., following OCAP principles) granting communities full accessibility to their raw data, with veto power over external publishing.";
-      } else if (q.id === 22 || q.id === 23) {
-        actionText = "Invest in multilingual, multi-format dissemination campaigns (using local radio, infographics, oral storytelling sessions) to ensure M&E findings are accessible to all literacy levels.";
-      } else if (q.id === 24 || q.id === 25 || q.id === 26) {
-        actionText = "Demonstrate institutional courage by publicizing uncomfortable or negative M&E findings. Run collaborative 'post-mortems' to adjust programmatic budgets and strategies accordingly.";
-      } else if (q.id === 27 || q.id === 28 || q.id === 29) {
-        actionText = "Actively partner with policy advocates or sector networks to translate evaluation data into policy briefings, lobbying for structural and funding reforms.";
-      } else if (q.id === 30) {
-        actionText = "Create recurring internal reflection circles and cross-department spaces to integrate M&E findings directly into ongoing operational and design decisions.";
-      }
-
-      if (actionText) {
-        list.push({
-          questionId: q.id,
-          text: q.text,
-          dimensionName: dim.name,
-          levelSelected: level,
-          action: actionText
-        });
-      }
-    });
-
-    return list;
-  }, [answers]);
-
-  // Save actions handler
-  const saveActionPlan = () => {
-    localStorage.setItem('me_assessment_action_notes', JSON.stringify(actionNotes));
-    localStorage.setItem('me_assessment_completed_actions', JSON.stringify(completedActions));
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 3000);
-  };
-
-  const handleNoteChange = (qId: number, text: string) => {
-    setActionNotes(prev => ({ ...prev, [qId]: text }));
-  };
-
-  const toggleActionCompleted = (qId: number) => {
-    setCompletedActions(prev => ({ ...prev, [qId]: !prev[qId] }));
-  };
+  }, [dimensionCounts, isMobile]);
 
   const handlePrint = () => {
     window.print();
   };
 
   return (
-    <div className="space-y-8 print:p-0 print:space-y-4 max-w-5xl mx-auto">
+    <div className="space-y-8 print:p-0 print:space-y-4 max-w-5xl mx-auto print:max-w-full print:w-full print:mx-0">
       {/* Action / Action Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 no-print border-b border-natural-sand/70 pb-5">
         <div>
@@ -252,16 +248,6 @@ export default function FinalDashboard({ answers, onReset }: FinalDashboardProps
             <span>Export Report / Print</span>
           </button>
 
-          <a
-            href="/scorm-package.zip"
-            download="equitable-me-scorm.zip"
-            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-natural-olive text-white hover:bg-natural-olive/90 font-serif font-bold text-xs sm:text-sm rounded-full shadow-md transition-all cursor-pointer text-center"
-            title="Download SCORM 1.2 Package (.zip) for uploading to standard LMS"
-          >
-            <Save size={15} />
-            <span>Download SCORM ZIP</span>
-          </a>
-
           <button
             onClick={onReset}
             className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-natural-sand/30 hover:bg-natural-sand/50 text-natural-ink border border-natural-sand font-serif font-semibold text-xs sm:text-sm rounded-full shadow-xs transition-all cursor-pointer"
@@ -271,6 +257,8 @@ export default function FinalDashboard({ answers, onReset }: FinalDashboardProps
           </button>
         </div>
       </div>
+
+
 
       {/* Printable Report Header */}
       <div className="hidden print:block border-b border-natural-sand pb-4 mb-6">
@@ -311,29 +299,23 @@ export default function FinalDashboard({ answers, onReset }: FinalDashboardProps
             <span>Dimension Deep-Dive</span>
           </div>
         </button>
-
-        <button
-          onClick={() => setActiveTab('planner')}
-          className={`px-4 py-3 font-serif font-bold text-sm border-b-2 transition-all cursor-pointer ${
-            activeTab === 'planner'
-              ? 'border-natural-olive text-natural-olive'
-              : 'border-transparent text-natural-accent hover:text-natural-olive'
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            <FileText size={15} />
-            <span>Action Planner ({actionableRecommendations.length})</span>
-          </div>
-        </button>
       </div>
 
-      {/* --- TAB CONTENT: PROFILE & OVERVIEW --- */}
-      {/* --- TAB CONTENT: PROFILE & OVERVIEW --- */}
-      <div className={`${activeTab === 'profile' ? 'block' : 'hidden'} print:block space-y-8 print:space-y-4`}>
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          
-          {/* Left Column: Overall Score Badge & Description */}
-          <div className="lg:col-span-7 space-y-6">
+      {/* Printable Report Wrapper */}
+      <div className="w-full">
+        {/* Printable Repeated Page Header */}
+        <div className="hidden print:flex justify-between items-center pb-2.5 mb-6 border-b border-natural-sand text-xs font-serif font-bold text-natural-olive uppercase tracking-wider">
+          <span>Equitable M&E Reflection Tool</span>
+          <span className="font-mono text-[10px] font-normal text-natural-ink/60">{new Date().toLocaleDateString()}</span>
+        </div>
+
+        <div>
+          {/* --- TAB CONTENT: PROFILE & OVERVIEW --- */}
+          <div className={`${activeTab === 'profile' ? 'block' : 'hidden'} print:block space-y-8 print:space-y-4`}>
+            <div className="grid grid-cols-1 md:grid-cols-12 print:grid-cols-12 gap-8 print:gap-6 items-start">
+              
+              {/* Left Column: Overall Score Badge & Description */}
+              <div className="md:col-span-7 print:col-span-7 space-y-6">
             <div className="bg-white rounded-2xl border border-natural-sand shadow-sm overflow-hidden print:shadow-none">
               <div className="bg-gradient-to-r from-natural-olive to-natural-olive/95 p-6 sm:p-8 text-white relative">
                 <div className="absolute top-6 right-6 p-3 rounded-full bg-white/10 text-white no-print">
@@ -350,13 +332,9 @@ export default function FinalDashboard({ answers, onReset }: FinalDashboardProps
                 </div>
               </div>
 
-              <div className="p-6 sm:p-8 space-y-6">
-                <p className="text-natural-ink/90 leading-relaxed text-sm sm:text-base font-light">
-                  {overallProfile.summary}
-                </p>
-
+              <div className="p-6 sm:p-8">
                 {/* Summary grid */}
-                <div className="grid grid-cols-3 gap-4 border-t border-natural-sand/60 pt-6">
+                <div className="grid grid-cols-3 gap-4">
                   <div className="text-center p-3 bg-natural-sand/30 rounded-2xl border border-natural-sand">
                     <div className="text-base sm:text-lg font-mono font-bold text-natural-ink">{overallCounts.L1}</div>
                     <div className="text-[10px] text-natural-ink/70 font-medium mt-0.5">L1 Practices</div>
@@ -405,8 +383,8 @@ export default function FinalDashboard({ answers, onReset }: FinalDashboardProps
           </div>
 
           {/* Right Column: Interactive Maturity Visualization */}
-          <div className="lg:col-span-5 space-y-6 print-break-inside-avoid">
-            <div className="bg-white rounded-2xl border border-natural-sand shadow-sm p-6 relative overflow-hidden flex flex-col justify-between print:shadow-none">
+          <div className="md:col-span-5 print:col-span-5 space-y-6 print-break-inside-avoid min-w-0 w-full overflow-hidden">
+            <div className="bg-white rounded-2xl border border-natural-sand shadow-sm p-4 sm:p-6 relative overflow-hidden flex flex-col justify-between print:shadow-none w-full min-w-0">
               <div className="flex items-center justify-between mb-4 no-print">
                 <h4 className="font-serif font-bold text-natural-olive text-sm sm:text-base">
                   Maturity Visualization
@@ -439,33 +417,84 @@ export default function FinalDashboard({ answers, onReset }: FinalDashboardProps
                 </h4>
               </div>
 
-              <div className="h-64 sm:h-72 w-full flex items-center justify-center">
+              {/* Interactive Screen-Only Chart Wrapper */}
+              <div className="h-64 sm:h-72 w-full flex items-center justify-center print:hidden min-w-0 overflow-hidden relative">
                 <ResponsiveContainer width="100%" height="100%">
                   {chartType === 'radar' ? (
-                    <RadarChart cx="50%" cy="50%" outerRadius="80%" data={chartData}>
+                    <RadarChart cx="50%" cy="50%" outerRadius={isMobile ? "58%" : "78%"} data={chartData}>
                       <PolarGrid stroke="#D9D9C2" />
-                      <PolarAngleAxis dataKey="subject" tick={{ fill: '#2C2C24', fontSize: 10, fontWeight: 500 }} />
-                      <PolarRadiusAxis angle={30} domain={[1.0, 3.0]} tick={{ fill: '#A8A878', fontSize: 9 }} />
+                      <PolarAngleAxis dataKey="subject" tick={{ fill: '#2C2C24', fontSize: isMobile ? 8 : 10, fontWeight: 600 }} />
+                      <PolarRadiusAxis angle={30} domain={[1.0, 3.0]} tick={<CustomRadiusTick isMobile={isMobile} />} />
+                      <Tooltip content={<CustomTooltip />} />
                       <Radar
                         name="Maturity Level"
                         dataKey="Maturity"
                         stroke="#5A5A40"
-                        fill="#D9D9C2"
-                        fillOpacity={0.4}
+                        strokeWidth={2}
+                        fill="#A8A878"
+                        fillOpacity={0.3}
+                        dot={{ r: 4.5, fill: '#5A5A40', stroke: '#fff', strokeWidth: 1.5 }}
+                        activeDot={{ r: 6.5, fill: '#5A5A40', stroke: '#fff', strokeWidth: 2 }}
                       />
                     </RadarChart>
                   ) : (
-                    <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                      <XAxis dataKey="subject" tick={{ fill: '#2C2C24', fontSize: 8 }} />
-                      <YAxis tick={{ fill: '#2C2C24', fontSize: 9 }} />
-                      <Tooltip />
-                      <Legend wrapperStyle={{ fontSize: 9 }} />
-                      <Bar dataKey="L1_Count" name="L1 Counts" fill="#D9D9C2" stackId="a" />
-                      <Bar dataKey="L2_Count" name="L2 Counts" fill="#A8A878" stackId="a" />
-                      <Bar dataKey="L3_Count" name="L3 Counts" fill="#5A5A40" stackId="a" />
+                    <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: isMobile ? 55 : 65 }}>
+                      <XAxis
+                        dataKey="subject"
+                        tick={{ fill: '#2C2C24', fontSize: isMobile ? 7.5 : 8.5, dy: 6 }}
+                        interval={0}
+                        angle={-25}
+                        textAnchor="end"
+                        height={isMobile ? 55 : 65}
+                      />
+                      <YAxis tick={{ fill: '#2C2C24', fontSize: isMobile ? 8 : 9 }} />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Legend verticalAlign="top" height={32} wrapperStyle={{ fontSize: isMobile ? 8 : 9, paddingBottom: 8 }} />
+                      <Bar dataKey="L1_Count" name="L1 Counts" fill="#D9D9C2" stackId="a" radius={[0, 0, 0, 0]} />
+                      <Bar dataKey="L2_Count" name="L2 Counts" fill="#A8A878" stackId="a" radius={[0, 0, 0, 0]} />
+                      <Bar dataKey="L3_Count" name="L3 Counts" fill="#5A5A40" stackId="a" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   )}
                 </ResponsiveContainer>
+              </div>
+
+              {/* High-Fidelity Print-Only Chart Wrapper - rendered offscreen in screen mode to ensure Recharts can measure dimensions on mount, but perfectly visible during print */}
+              <div 
+                className="absolute left-[-9999px] top-0 opacity-0 pointer-events-none print:static print:opacity-100 print:pointer-events-auto print:flex print:items-center print:justify-center print:w-full print:mx-auto" 
+                style={{ height: '240px', width: '340px' }}
+              >
+                {chartType === 'radar' ? (
+                  <RadarChart cx="50%" cy="50%" outerRadius="70%" data={chartData} width={340} height={240}>
+                    <PolarGrid stroke="#D9D9C2" />
+                    <PolarAngleAxis dataKey="subject" tick={{ fill: '#2C2C24', fontSize: 9, fontWeight: 600 }} />
+                    <PolarRadiusAxis angle={30} domain={[1.0, 3.0]} tick={<CustomRadiusTick isMobile={false} />} />
+                    <Radar
+                      name="Maturity Level"
+                      dataKey="Maturity"
+                      stroke="#5A5A40"
+                      strokeWidth={2}
+                      fill="#A8A878"
+                      fillOpacity={0.3}
+                      dot={{ r: 4, fill: '#5A5A40', stroke: '#fff', strokeWidth: 1.5 }}
+                    />
+                  </RadarChart>
+                ) : (
+                  <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 55 }} width={340} height={240}>
+                    <XAxis
+                      dataKey="subject"
+                      tick={{ fill: '#2C2C24', fontSize: 8.5, dy: 6 }}
+                      interval={0}
+                      angle={-25}
+                      textAnchor="end"
+                      height={55}
+                    />
+                    <YAxis tick={{ fill: '#2C2C24', fontSize: 9 }} />
+                    <Legend verticalAlign="top" height={28} wrapperStyle={{ fontSize: 9, paddingBottom: 6 }} />
+                    <Bar dataKey="L1_Count" name="L1 Counts" fill="#D9D9C2" stackId="a" radius={[0, 0, 0, 0]} />
+                    <Bar dataKey="L2_Count" name="L2 Counts" fill="#A8A878" stackId="a" radius={[0, 0, 0, 0]} />
+                    <Bar dataKey="L3_Count" name="L3 Counts" fill="#5A5A40" stackId="a" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                )}
               </div>
 
               <div className="mt-4 pt-4 border-t border-natural-sand/60 text-[11px] text-natural-accent text-center flex flex-col items-center gap-1">
@@ -483,7 +512,7 @@ export default function FinalDashboard({ answers, onReset }: FinalDashboardProps
       </div>
 
       {/* --- TAB CONTENT: DIMENSION DEEP DIVE --- */}
-      <div className={`${activeTab === 'breakdown' ? 'block' : 'hidden'} print:block space-y-6 print:space-y-4 print:mt-8 print:break-before-page`}>
+      <div className={`${activeTab === 'breakdown' ? 'block' : 'hidden'} print:block space-y-6 print:space-y-4 print:mt-8 print-break-before`}>
         {/* Printable Section Title */}
         <div className="hidden print:block mb-4 border-b border-natural-sand pb-2">
           <h2 className="font-serif text-xl font-bold text-natural-olive">
@@ -624,120 +653,14 @@ export default function FinalDashboard({ answers, onReset }: FinalDashboardProps
         </div>
       </div>
 
-      {/* --- TAB CONTENT: INTERACTIVE ACTION PLANNER --- */}
-      <div className={`${activeTab === 'planner' ? 'block' : 'hidden'} print:block space-y-6 print:space-y-4 print:mt-8 print:break-before-page`}>
-        {/* Printable Section Title */}
-        <div className="hidden print:block mb-4 border-b border-natural-sand pb-2">
-          <h2 className="font-serif text-xl font-bold text-natural-olive">
-            Equitable M&E Action Planner
-          </h2>
-          <p className="text-xs text-natural-ink/75 font-mono">
-            Our custom implementation roadmap, targets, and strategic action plans.
-          </p>
+
+
         </div>
 
-        <div className="bg-white rounded-2xl border border-natural-sand shadow-sm p-6 sm:p-8 space-y-6 print:shadow-none print:p-0 print:border-none">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h3 className="font-serif font-bold text-natural-olive text-lg sm:text-xl">
-                Interactive Equity Action Planner
-              </h3>
-              <p className="text-xs sm:text-sm text-natural-accent font-semibold">
-                Tailored development actions based on questions where your framework has room to deepen equity.
-              </p>
-            </div>
-
-            {/* Save Plan Button */}
-            <button
-              onClick={saveActionPlan}
-              className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-natural-olive hover:bg-natural-olive/90 text-white font-serif font-bold text-sm rounded-full shadow-xs transition-all self-stretch sm:self-auto cursor-pointer no-print"
-            >
-              {saveSuccess ? <CheckCircle size={15} /> : <Save size={15} />}
-              <span>{saveSuccess ? 'Plan Saved!' : 'Save Action Plan'}</span>
-            </button>
-          </div>
-
-          {/* Empty State */}
-          {actionableRecommendations.length === 0 ? (
-            <div className="text-center py-12 bg-natural-sand/10 rounded-2xl border border-dashed border-natural-sand">
-              <Sparkles className="w-10 h-10 text-natural-olive mx-auto mb-3 animate-bounce" />
-              <h4 className="font-serif font-bold text-natural-ink text-base">Perfect Score Achieved!</h4>
-              <p className="text-xs text-natural-ink/70 max-w-sm mx-auto leading-relaxed mt-1">
-                You have answered 'Highly Transformative (L3)' across all 30 assessment questions. Your practices are fully equity-centered!
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {actionableRecommendations.map((rec, index) => {
-                const isCompleted = !!completedActions[rec.questionId];
-                const userNote = actionNotes[rec.questionId] || "";
-
-                return (
-                  <div
-                    key={rec.questionId}
-                    className={`p-5 rounded-2xl border transition-all duration-300 flex flex-col md:flex-row gap-4 items-start print-break-inside-avoid ${
-                      isCompleted
-                        ? 'bg-natural-sand/10 border-natural-sand/60 opacity-70'
-                        : 'bg-white border-natural-sand shadow-xs hover:shadow-sm'
-                    }`}
-                  >
-                    {/* Checkbox */}
-                    <button
-                      onClick={() => toggleActionCompleted(rec.questionId)}
-                      className="p-1 rounded text-natural-olive hover:text-natural-olive/80 transition-colors flex-shrink-0 cursor-pointer"
-                      title={isCompleted ? "Mark in progress" : "Mark completed"}
-                    >
-                      {isCompleted ? <CheckSquare size={20} /> : <Square size={20} className="text-natural-accent" />}
-                    </button>
-
-                    {/* Content details */}
-                    <div className="flex-1 space-y-3">
-                      <div className="space-y-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-[10px] font-mono font-bold bg-natural-sand/40 text-natural-olive px-2 py-0.5 rounded-md">
-                            {rec.dimensionName}
-                          </span>
-                          <span className="text-[9px] font-mono font-bold bg-natural-sand/30 text-natural-ink px-1.5 py-0.5 rounded border border-natural-sand">
-                            Selected: {rec.levelSelected}
-                          </span>
-                        </div>
-                        <h4 className={`font-serif font-bold text-natural-ink text-sm sm:text-base leading-snug ${
-                          isCompleted ? 'line-through text-natural-accent' : ''
-                        }`}>
-                          Recommendation: {rec.action}
-                        </h4>
-                        <p className="text-xs text-natural-accent leading-relaxed font-light font-mono italic">
-                          Triggered by: "{rec.text}"
-                        </p>
-                      </div>
-
-                      {/* Interactive Implementation Note Box */}
-                      <div className="space-y-1.5 pt-2">
-                        <label className="text-[10px] font-bold text-natural-accent uppercase tracking-wider block">
-                          Our Implementation Notes & Milestones:
-                        </label>
-                        <textarea
-                          value={userNote}
-                          onChange={(e) => handleNoteChange(rec.questionId, e.target.value)}
-                          placeholder="Type target dates, assigned coordinators, or customized steps here..."
-                          className="w-full text-xs p-3 rounded-xl border border-natural-sand bg-natural-sand/10 focus:bg-white focus:ring-1 focus:ring-natural-olive/30 focus:border-natural-olive focus:outline-none transition-all placeholder-natural-accent h-16 resize-none print:hidden"
-                        />
-                        {userNote ? (
-                          <p className="hidden print:block text-xs text-natural-ink bg-natural-sand/10 border border-natural-sand/50 p-3 rounded-xl whitespace-pre-wrap">
-                            {userNote}
-                          </p>
-                        ) : (
-                          <p className="hidden print:block text-xs text-natural-accent italic">
-                            No notes added yet.
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+        {/* Printable Page Footer */}
+        <div className="hidden print:flex pt-2.5 mt-6 border-t border-natural-sand text-[10px] font-mono text-natural-olive/70 text-center justify-between items-center">
+          <span>Equitable M&E Reflection Tool</span>
+          <span>Self-Assessment Report</span>
         </div>
       </div>
     </div>

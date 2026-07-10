@@ -25,14 +25,14 @@ const dimensionsInfo = [
     icon: BarChart3,
     title: "Data Analysis & Interpretation",
     subtitle: "Cultural Competence",
-    desc: "Focuses on how data is validated, who is involved in making meaning, and language/accessibility protocols.",
+    desc: "Focuses on how data is translated into meaning and respected.",
     color: "from-natural-olive/10 to-natural-olive/5 text-natural-olive border-natural-sand/80"
   },
   {
     icon: TrendingUp,
     title: "Use of Findings & Accountability",
     subtitle: "Systemic Change",
-    desc: "Focuses on how the organization acts on uncomfortable truths, addresses systemic inequities, and fosters continuous learning.",
+    desc: "Focuses on the commitment to systemic change.",
     color: "from-natural-sand/30 to-natural-sand/20 text-natural-olive border-natural-sand/90"
   }
 ];
@@ -58,17 +58,30 @@ export default function Introduction({ onStart }: IntroductionProps) {
           transition={{ delay: 0.1, duration: 0.6 }}
           className="font-serif text-4xl sm:text-5xl font-semibold text-natural-olive tracking-tight mb-4"
         >
-          Equitable M&E Reflection Tool
+          Welcome to the Equitable M&E Reflection Tool
         </motion.h1>
 
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2, duration: 0.6 }}
-          className="text-lg text-natural-ink/90 max-w-2xl mx-auto leading-relaxed"
+          className="text-base sm:text-lg text-natural-ink/95 max-w-3xl mx-auto leading-relaxed mb-4"
         >
-          Rather than assessing what is "right" or "wrong," this experience invites you to consider how your current monitoring and evaluation (M&E) approaches align with different levels of equity-oriented practice.
+          This tool is designed to help you reflect on how equity is embedded within your Monitoring and Evaluation (M&E) practices.
         </motion.p>
+        
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.25, duration: 0.6 }}
+          className="text-base text-natural-ink/85 max-w-3xl mx-auto leading-relaxed"
+        >
+          Rather than assessing what is “right” or “wrong”, this experience invites you to consider how your current approaches align with different levels of equity-oriented practice — from conventional approaches to more transformative practices.
+        </motion.p>
+      </div>
+
+      <div className="mb-6 text-center">
+        <h3 className="font-serif font-bold text-natural-olive text-lg mb-2">You will be guided through four key areas:</h3>
       </div>
 
       {/* Guide Cards */}
@@ -118,9 +131,9 @@ export default function Introduction({ onStart }: IntroductionProps) {
           <h4 className="font-serif font-bold text-natural-olive mb-1.5 text-sm sm:text-base">Important Guidance</h4>
           <ul className="text-xs text-natural-ink/80 space-y-2 list-disc list-inside">
             <li>For each question, select the option that most closely reflects your current practice.</li>
-            <li>Be as honest as possible — this is a reflective tool, not an audit or performance review.</li>
-            <li>At the end, you will receive a comprehensive profile highlighting where your practices sit and how to deepen equity.</li>
-            <li className="font-semibold text-natural-ink list-none mt-2">There are no correct answers — only opportunities for reflection and growth.</li>
+            <li>Be as honest as possible — this is a reflective tool, not an evaluation.</li>
+            <li>At the end, you will receive a profile that highlights where your practices currently sit and where there may be opportunities to deepen equity.</li>
+            <li className="font-semibold text-natural-ink list-none mt-2 text-sm text-natural-olive">There are no correct answers — only opportunities for reflection and growth.</li>
           </ul>
         </div>
       </motion.div>

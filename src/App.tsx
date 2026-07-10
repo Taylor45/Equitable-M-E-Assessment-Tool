@@ -10,17 +10,6 @@ import { ClipboardCheck } from 'lucide-react';
 import { questions, dimensions } from './questions';
 import { EquityLevel, Question, Dimension } from './types';
 
-// SCORM Integration
-import {
-  initSCORM,
-  getSavedAnswersFromSCORM,
-  saveAnswersToSCORM,
-  reportCompletion,
-  isSCORMActive,
-  getSCORMVersion,
-  terminateSCORM
-} from './lib/scorm';
-
 // Components
 import Introduction from './components/Introduction';
 import QuestionCard from './components/QuestionCard';
@@ -31,49 +20,52 @@ export default function App() {
   // State
   const [step, setStep] = useState<'intro' | 'question' | 'dimension-feedback' | 'final'>('intro');
   const [answers, setAnswers] = useState<Record<number, EquityLevel>>(() => {
-    const saved = localStorage.getItem('me_assessment_answers');
-    return saved ? JSON.parse(saved) : {};
+    try {
+      const saved = localStorage.getItem('me_assessment_answers');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object') {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.error('Failed to parse saved answers from localStorage:', e);
+    }
+    return {};
   });
   const [currentQuestionId, setCurrentQuestionId] = useState<number>(1);
   const [activeDimensionFeedbackId, setActiveDimensionFeedbackId] = useState<number | null>(null);
-  const [isLMS, setIsLMS] = useState<boolean>(false);
-  const [scormVer, setScormVer] = useState<'1.2' | '2004' | null>(null);
+  const [showResetConfirm, setShowResetConfirm] = useState<boolean>(false);
 
-  // Initialize SCORM on Mount
+  // Auto-resume from localStorage on mount
   useEffect(() => {
-    const hasSCORM = initSCORM();
-    if (hasSCORM) {
-      setIsLMS(true);
-      setScormVer(getSCORMVersion());
-      const savedAnswers = getSavedAnswersFromSCORM();
-      if (savedAnswers && Object.keys(savedAnswers).length > 0) {
-        setAnswers(savedAnswers as Record<number, EquityLevel>);
-        
-        // Find current progress
-        const answeredIds = Object.keys(savedAnswers).map(Number);
-        const maxAnswered = Math.max(...answeredIds);
-        const nextQ = Math.min(maxAnswered + 1, questions.length);
-        
-        if (answeredIds.length === questions.length) {
-          setStep('final');
-        } else {
-          setCurrentQuestionId(nextQ);
-          setStep('question');
+    try {
+      const saved = localStorage.getItem('me_assessment_answers');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
+          const answeredIds = Object.keys(parsed).map(Number).filter(id => !isNaN(id) && id > 0);
+          if (answeredIds.length > 0) {
+            const maxAnswered = Math.max(...answeredIds);
+            const nextQ = Math.min(maxAnswered + 1, questions.length);
+            
+            if (answeredIds.length === questions.length) {
+              setStep('final');
+            } else {
+              setCurrentQuestionId(nextQ);
+              setStep('question');
+            }
+          }
         }
       }
+    } catch (e) {
+      console.error('Failed to parse local storage answers for auto-resume:', e);
     }
-
-    return () => {
-      terminateSCORM();
-    };
   }, []);
 
-  // Sync state to local storage and SCORM
+  // Sync state to local storage
   useEffect(() => {
     localStorage.setItem('me_assessment_answers', JSON.stringify(answers));
-    if (isSCORMActive()) {
-      saveAnswersToSCORM(answers);
-    }
   }, [answers]);
 
   // Handle Level Selection
@@ -125,23 +117,6 @@ export default function App() {
       // It was the last dimension, go to final dashboard!
       setStep('final');
       setActiveDimensionFeedbackId(null);
-
-      // Report SCORM Completion
-      if (isSCORMActive()) {
-        let totalL1 = 0;
-        let totalL2 = 0;
-        let totalL3 = 0;
-        questions.forEach(q => {
-          const val = answers[q.id];
-          if (val === 'L1') totalL1++;
-          else if (val === 'L2') totalL2++;
-          else if (val === 'L3') totalL3++;
-        });
-        const answeredCount = totalL1 + totalL2 + totalL3;
-        const averageScore = answeredCount > 0 ? (totalL1 * 1 + totalL2 * 2 + totalL3 * 3) / answeredCount : 1.0;
-        const scorePercent = ((averageScore - 1.0) / 2.0) * 100;
-        reportCompletion(scorePercent);
-      }
     } else {
       // Proceed to the first question of the next dimension
       const nextDimId = activeDimensionFeedbackId + 1;
@@ -156,15 +131,18 @@ export default function App() {
 
   // Reset / Clear
   const handleReset = () => {
-    if (window.confirm("Are you sure you want to reset all variables and restart the self-assessment? This will clear your current progress.")) {
-      setAnswers({});
-      setCurrentQuestionId(1);
-      setActiveDimensionFeedbackId(null);
-      setStep('intro');
-      localStorage.removeItem('me_assessment_answers');
-      localStorage.removeItem('me_assessment_action_notes');
-      localStorage.removeItem('me_assessment_completed_actions');
-    }
+    setShowResetConfirm(true);
+  };
+
+  const confirmReset = () => {
+    setAnswers({});
+    setCurrentQuestionId(1);
+    setActiveDimensionFeedbackId(null);
+    setStep('intro');
+    localStorage.removeItem('me_assessment_answers');
+    localStorage.removeItem('me_assessment_action_notes');
+    localStorage.removeItem('me_assessment_completed_actions');
+    setShowResetConfirm(false);
   };
 
   // Fast Jump to a specific question (only for developer/study purposes)
@@ -197,7 +175,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-natural-bg flex flex-col justify-between pb-12">
+    <div className="min-h-screen bg-natural-bg flex flex-col justify-between pb-12 print:bg-white print:pb-0 print:min-h-0 print:block">
       
       {/* Sleek App Header */}
       <header className="bg-white border-b border-natural-sand/70 py-4 px-6 sticky top-0 z-30 shadow-xs no-print">
@@ -210,7 +188,6 @@ export default function App() {
               <h1 className="font-serif font-bold text-natural-olive text-base sm:text-lg tracking-tight">
                 Equitable M&E Reflection Tool
               </h1>
-              <p className="text-[10px] text-natural-accent font-mono font-medium">Status: Connected to Runtime Variables</p>
             </div>
           </div>
 
@@ -221,7 +198,7 @@ export default function App() {
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-8 sm:py-12 flex flex-col justify-center">
+      <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-8 sm:py-12 flex flex-col justify-center print:max-w-full print:w-full print:p-0 print:m-0 print:block">
         <AnimatePresence mode="wait">
           
           {step === 'intro' && (
@@ -233,6 +210,11 @@ export default function App() {
               transition={{ duration: 0.3 }}
             >
               <Introduction onStart={() => {
+                // Ensure starting a new assessment clears previous choices
+                setAnswers({});
+                localStorage.removeItem('me_assessment_answers');
+                localStorage.removeItem('me_assessment_action_notes');
+                localStorage.removeItem('me_assessment_completed_actions');
                 setStep('question');
                 setCurrentQuestionId(1);
               }} />
@@ -307,6 +289,49 @@ export default function App() {
 
         </AnimatePresence>
       </main>
+
+      {/* Custom Reset Confirmation Modal */}
+      <AnimatePresence>
+        {showResetConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs no-print">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+              className="bg-white border border-natural-sand rounded-2xl shadow-xl max-w-md w-full overflow-hidden"
+            >
+              <div className="p-6 space-y-4">
+                <div className="w-12 h-12 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700">
+                  <ClipboardCheck size={24} />
+                </div>
+                <div className="space-y-1.5">
+                  <h3 className="font-serif font-bold text-natural-olive text-lg leading-snug">
+                    Reset Self-Assessment?
+                  </h3>
+                  <p className="text-xs sm:text-sm text-natural-ink/75 leading-relaxed font-light">
+                    Are you sure you want to reset all selected choices? This will clear your current progress and cannot be undone.
+                  </p>
+                </div>
+              </div>
+              <div className="bg-natural-sand/20 border-t border-natural-sand/60 px-6 py-4 flex items-center justify-end gap-3">
+                <button
+                  onClick={() => setShowResetConfirm(false)}
+                  className="px-4 py-2 text-xs sm:text-sm font-medium text-natural-ink hover:bg-natural-sand/30 border border-natural-sand rounded-full transition-colors cursor-pointer"
+                >
+                  Keep Assessment
+                </button>
+                <button
+                  onClick={confirmReset}
+                  className="px-4 py-2 text-xs sm:text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-full shadow-md transition-colors cursor-pointer"
+                >
+                  Yes, Reset Everything
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
     </div>
   );
