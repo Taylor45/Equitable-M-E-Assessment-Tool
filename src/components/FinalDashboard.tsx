@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import {
   Award, Sparkles, Printer, RotateCcw, ChevronRight, ChevronDown,
   ClipboardList, AlertCircle, Compass, Users, BarChart3,
-  TrendingUp, ArrowUpRight, HelpCircle, Save
+  TrendingUp, ArrowUpRight, HelpCircle
 } from 'lucide-react';
 import {
   Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
@@ -303,12 +303,6 @@ export default function FinalDashboard({ answers, onReset }: FinalDashboardProps
 
       {/* Printable Report Wrapper */}
       <div className="w-full">
-        {/* Printable Repeated Page Header */}
-        <div className="hidden print:flex justify-between items-center pb-2.5 mb-6 border-b border-natural-sand text-xs font-serif font-bold text-natural-olive uppercase tracking-wider">
-          <span>Equitable M&E Reflection Tool</span>
-          <span className="font-mono text-[10px] font-normal text-natural-ink/60">{new Date().toLocaleDateString()}</span>
-        </div>
-
         <div>
           {/* --- TAB CONTENT: PROFILE & OVERVIEW --- */}
           <div className={`${activeTab === 'profile' ? 'block' : 'hidden'} print:block space-y-8 print:space-y-4`}>
@@ -657,11 +651,8 @@ export default function FinalDashboard({ answers, onReset }: FinalDashboardProps
 
         </div>
 
-        {/* Printable Page Footer */}
-        <div className="hidden print:flex pt-2.5 mt-6 border-t border-natural-sand text-[10px] font-mono text-natural-olive/70 text-center justify-between items-center">
-          <span>Equitable M&E Reflection Tool</span>
-          <span>Self-Assessment Report</span>
-        </div>
+        {/* Printable Custom Page Number Container */}
+        <div className="hidden print:block print-page-number"></div>
       </div>
     </div>
   );

@@ -25,7 +25,7 @@ body {
 @media print {
   @page {
     size: auto;
-    margin: 20mm 15mm 20mm 15mm;
+    margin: 0;
   }
   
   body {
@@ -33,6 +33,7 @@ body {
     color: #2C2C24 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+    margin: 18mm 15mm 18mm 15mm !important;
   }
   
   .no-print {
@@ -53,5 +54,22 @@ body {
   /* Ensure charts and blocks scale correctly */
   svg, canvas {
     max-width: 100% !important;
+  }
+
+  /* Custom Print Page Numbers at bottom-right */
+  .print-page-number {
+    position: fixed;
+    bottom: 8mm;
+    right: 15mm;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 500;
+    color: #5A5A40;
+    display: block !important;
+    z-index: 9999;
+  }
+
+  .print-page-number::after {
+    content: "Page " counter(page);
   }
 }

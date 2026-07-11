@@ -97,28 +97,6 @@ export default function QuestionCard({
 }: QuestionCardProps) {
   const alphabet = ['A', 'B', 'C'];
 
-  // Human-readable label + accent styling for each equity level
-  const levelMeta: Record<EquityLevel, { label: string; badge: string; panel: string }> = {
-    L1: {
-      label: 'Conventional / Needs Improvement',
-      badge: 'bg-amber-100 text-amber-900 border border-amber-200',
-      panel: 'bg-amber-50/70 border-amber-200'
-    },
-    L2: {
-      label: 'Developing Equity',
-      badge: 'bg-amber-100 text-amber-900 border border-amber-200',
-      panel: 'bg-amber-50/70 border-amber-200'
-    },
-    L3: {
-      label: 'Highly Equitable / Transformative',
-      badge: 'bg-amber-100 text-amber-900 border border-amber-200',
-      panel: 'bg-amber-50/70 border-amber-200'
-    }
-  };
-
-  // Find the currently selected option to surface its feedback direction
-  const selectedOption = question.options.find((opt) => opt.level === selectedLevel);
-
   return (
     <div className="bg-white rounded-2xl border border-natural-sand shadow-sm p-6 sm:p-8 relative overflow-hidden">
       {/* Background Accent Gradient */}
