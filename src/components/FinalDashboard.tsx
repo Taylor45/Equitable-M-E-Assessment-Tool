@@ -92,8 +92,6 @@ const CustomRadiusTick = ({ x, y, payload, isMobile, cx, cy, radius, angle }: an
 };
 
 export default function FinalDashboard({ answers, onReset }: FinalDashboardProps) {
-  const [activeTab, setActiveTab] = useState<'profile' | 'breakdown'>('profile');
-  const [expandedDimension, setExpandedDimension] = useState<number | null>(1);
   const [chartType, setChartType] = useState<'radar' | 'bar'>('radar');
   const [isMobile, setIsMobile] = useState<boolean>(false);
 
@@ -270,42 +268,9 @@ export default function FinalDashboard({ answers, onReset }: FinalDashboardProps
         </p>
       </div>
 
-      {/* Tab Navigation (No-Print) */}
-      <div className="flex border-b border-natural-sand gap-1 no-print">
-        <button
-          onClick={() => setActiveTab('profile')}
-          className={`px-4 py-3 font-serif font-bold text-sm border-b-2 transition-all cursor-pointer ${
-            activeTab === 'profile'
-              ? 'border-natural-olive text-natural-olive'
-              : 'border-transparent text-natural-accent hover:text-natural-olive'
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            <Award size={15} />
-            <span>Overall Profile</span>
-          </div>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('breakdown')}
-          className={`px-4 py-3 font-serif font-bold text-sm border-b-2 transition-all cursor-pointer ${
-            activeTab === 'breakdown'
-              ? 'border-natural-olive text-natural-olive'
-              : 'border-transparent text-natural-accent hover:text-natural-olive'
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            <ClipboardList size={15} />
-            <span>Dimension Deep-Dive</span>
-          </div>
-        </button>
-      </div>
-
       {/* Printable Report Wrapper */}
       <div className="w-full">
-        <div>
-          {/* --- TAB CONTENT: PROFILE & OVERVIEW --- */}
-          <div className={`${activeTab === 'profile' ? 'block' : 'hidden'} print:block space-y-8 print:space-y-4`}>
+        <div className="space-y-8 print:space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-12 print:grid-cols-12 gap-8 print:gap-6 items-start">
               
               {/* Left Column: Overall Score Badge & Description */}
@@ -458,7 +423,7 @@ export default function FinalDashboard({ answers, onReset }: FinalDashboardProps
                 style={{ height: '240px', width: '340px' }}
               >
                 {chartType === 'radar' ? (
-                  <RadarChart cx="50%" cy="50%" outerRadius="70%" data={chartData} width={340} height={240}>
+                  <RadarChart cx="50%" cy="50%" outerRadius="58%" data={chartData} width={340} height={240}>
                     <PolarGrid stroke="#D9D9C2" />
                     <PolarAngleAxis dataKey="subject" tick={{ fill: '#2C2C24', fontSize: 9, fontWeight: 600 }} />
                     <PolarRadiusAxis angle={30} domain={[1.0, 3.0]} tick={<CustomRadiusTick isMobile={false} />} />
@@ -505,151 +470,7 @@ export default function FinalDashboard({ answers, onReset }: FinalDashboardProps
         </div>
       </div>
 
-      {/* --- TAB CONTENT: DIMENSION DEEP DIVE --- */}
-      <div className={`${activeTab === 'breakdown' ? 'block' : 'hidden'} print:block space-y-6 print:space-y-4 print:mt-8 print-break-before`}>
-        {/* Printable Section Title */}
-        <div className="hidden print:block mb-4 border-b border-natural-sand pb-2">
-          <h2 className="font-serif text-xl font-bold text-natural-olive">
-            Dimension Deep-Dive Analysis
-          </h2>
-          <p className="text-xs text-natural-ink/75 font-mono">
-            Detailed criteria, score indices, and self-assessment answer breakdowns.
-          </p>
-        </div>
 
-        <div className="space-y-4">
-          {dimensions.map(dim => {
-            const isExpanded = expandedDimension === dim.id;
-            const count = dimensionCounts[dim.id];
-            const maxVal = Math.max(count.L1, count.L2, count.L3);
-            const isTie = (count.L1 === maxVal ? 1 : 0) + (count.L2 === maxVal ? 1 : 0) + (count.L3 === maxVal ? 1 : 0) > 1;
-
-            let label = "Conventional Practice (L1)";
-            let labelColor = "bg-natural-sand/40 text-natural-ink border-natural-sand";
-            let feedbackText = dim.feedback.L1;
-
-            if (isTie) {
-              label = "Mixed / Balanced Practice";
-              labelColor = "bg-natural-sand text-natural-olive border-natural-sand";
-              feedbackText = dim.feedback.tie || "Your practices are distributed evenly across different levels.";
-            } else if (count.L3 === maxVal) {
-              label = "Transformative Practice (L3)";
-              labelColor = "bg-natural-sand/20 text-natural-olive border-natural-olive";
-              feedbackText = dim.feedback.L3;
-            } else if (count.L2 === maxVal) {
-              label = "Developing Equity (L2)";
-              labelColor = "bg-natural-accent/20 text-natural-olive border-natural-sand";
-              feedbackText = dim.feedback.L2;
-            }
-
-            return (
-              <div
-                key={dim.id}
-                className="bg-white rounded-2xl border border-natural-sand shadow-sm overflow-hidden transition-all duration-300 print-break-inside-avoid print:shadow-none"
-              >
-                {/* Accordion Trigger */}
-                <button
-                  onClick={() => setExpandedDimension(isExpanded ? null : dim.id)}
-                  className="w-full p-5 flex items-center justify-between text-left hover:bg-natural-sand/10 transition-colors cursor-pointer print:pointer-events-none"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-natural-sand/30 flex items-center justify-center font-serif font-bold text-natural-olive">
-                      {dim.id}
-                    </div>
-                    <div>
-                      <h3 className="font-serif font-bold text-natural-olive text-base sm:text-lg">
-                        {dim.name}
-                      </h3>
-                      <p className="text-xs text-natural-accent font-semibold">
-                        {dim.subtitle} • Maturity Index: <span className="font-mono text-natural-olive font-bold">{count.avgScore}</span>
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <span className={`text-[10px] font-mono font-bold uppercase px-2 py-1 rounded border ${labelColor}`}>
-                      {label}
-                    </span>
-                    <span className="no-print">
-                      {isExpanded ? <ChevronDown size={18} className="text-natural-olive" /> : <ChevronRight size={18} className="text-natural-olive" />}
-                    </span>
-                  </div>
-                </button>
-
-                {/* Expanded Content - shown if expanded or unconditionally in print */}
-                <div
-                  className={`border-t border-natural-sand/40 p-6 space-y-6 ${
-                    isExpanded ? 'block' : 'hidden print:block'
-                  }`}
-                >
-                  {/* Sub-Header / Purpose */}
-                  <div className="bg-natural-sand/10 border border-natural-sand rounded-xl p-4 text-xs text-natural-ink/90">
-                    <span className="font-bold text-natural-olive block mb-1">M&E Purpose:</span>
-                    {dim.purpose}
-                  </div>
-
-                  {/* Dimension Specific Feedback */}
-                  <div className="space-y-2">
-                    <span className="text-xs font-bold text-natural-accent uppercase tracking-wider block">
-                      Personalized Feedback & Strategy:
-                    </span>
-                    <p className="text-sm text-natural-ink/80 leading-relaxed font-light">
-                      {feedbackText}
-                    </p>
-                  </div>
-
-                  {/* Question Choices List */}
-                  <div className="space-y-4">
-                    <span className="text-xs font-bold text-natural-accent uppercase tracking-wider block">
-                      Your Answers Breakdown:
-                    </span>
-
-                    <div className="space-y-3">
-                      {questions
-                        .filter(q => q.dimensionId === dim.id)
-                        .map(q => {
-                          const levelSelected = answers[q.id];
-                          const selectedOption = q.options.find(opt => opt.level === levelSelected);
-
-                          let badgeColor = "bg-natural-sand/40 text-natural-ink border-natural-sand";
-                          if (levelSelected === 'L3') badgeColor = "bg-natural-sand/20 text-natural-olive border-natural-olive";
-                          else if (levelSelected === 'L2') badgeColor = "bg-natural-accent/20 text-natural-olive border-natural-sand";
-
-                          return (
-                            <div key={q.id} className="p-4 border border-natural-sand/40 rounded-xl bg-natural-sand/10 space-y-2 text-xs print-break-inside-avoid">
-                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                                <span className="font-semibold text-natural-ink">
-                                  Q{q.id}. {q.text}
-                                </span>
-                                <span className={`self-start sm:self-auto text-[9px] font-mono font-bold uppercase px-2 py-0.5 rounded border ${badgeColor}`}>
-                                  {levelSelected} Selected
-                                </span>
-                              </div>
-                              {selectedOption && (
-                                <div className="border-l-2 border-natural-sand pl-3 py-1 space-y-1">
-                                  <p className="font-medium text-natural-ink">{selectedOption.text}</p>
-                                  {selectedOption.description && (
-                                    <p className="text-natural-ink/75 font-light leading-relaxed">
-                                      {selectedOption.description}
-                                    </p>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-
-
-        </div>
 
         {/* Printable Custom Page Number Container */}
         <div className="hidden print:block print-page-number"></div>
